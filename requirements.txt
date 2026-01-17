@@ -1,0 +1,4 @@
+ramdom # Generate random numbers for dice rolls
+tkinter # Standard Python interface to the Tk GUI toolkit
+Pillow # Pillow is the friendly PIL fork by Alex Clark and Contributors (PIL Fork)
+pytest # Simple and powerful testing framework for Python
