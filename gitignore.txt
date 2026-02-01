@@ -1,0 +1,4 @@
+.azerty.txt
+.notesrobin.txt
+.README_dice-roller-python.txt
+.docs

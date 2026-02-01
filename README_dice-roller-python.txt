@@ -11,4 +11,4 @@ Structure du projet :
 
 
 afin de lancer le programme, depuis le dossier dice-roller-python, executez la commande :
-python -m src.v2_gui.app_tk^C
+python -m src.v2_gui.app_tk
