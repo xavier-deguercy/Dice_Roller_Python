@@ -72,6 +72,7 @@ class DiceRollerApp(tk.Tk):
         self.combo_de = ttk.Combobox(
             line,
             textvariable=self.nb_faces_var,
+            # Source de vérité : la liste des dés autorisés vient du core.
             values=[str(x) for x in self.roller.DES_AUTORISES],
             state="readonly",
             width=8
@@ -213,6 +214,8 @@ class DiceRollerApp(tk.Tk):
         kept = None  # utile pour d20 avantage/désavantage
 
         # --- Cas d20 avantage/désavantage (spécifique) ---
+        # Ici, on délègue au core qui applique le pattern Strategy
+        # via DiceRoller.roll_d20 (d20 uniquement).
         if nb_faces == 20 and self.mode_d20_var.get() in ("avantage", "desavantage"):
             mode = self.mode_d20_var.get()
             info = self.roller.roll_d20(mode)  # dict: rolls, selected, mode
