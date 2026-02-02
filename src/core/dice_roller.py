@@ -3,7 +3,13 @@ from abc import ABC, abstractmethod
 
 
 class RollStrategy(ABC):
-    """Contrat de stratégie pour un lancer de dé."""
+    """Contrat de stratégie pour un lancer de dé.
+
+    Pattern Strategy :
+    - On définit une interface commune (roll) pour plusieurs variantes d'un même
+      comportement.
+    - On délègue l'exécution à une implémentation concrète choisie dynamiquement.
+    """
 
     @abstractmethod
     def roll(self, roller: "DiceRoller", nb_faces: int) -> dict:
@@ -11,7 +17,10 @@ class RollStrategy(ABC):
 
 
 class NormalRollStrategy(RollStrategy):
-    """Lancer classique (1 dé)."""
+    """Lancer classique (1 dé).
+
+    Implémentation concrète de la stratégie "normal".
+    """
 
     def roll(self, roller: "DiceRoller", nb_faces: int) -> dict:
         value = roller.roll_die(nb_faces)
@@ -24,7 +33,10 @@ class NormalRollStrategy(RollStrategy):
 
 
 class AdvantageRollStrategy(RollStrategy):
-    """Lancer avec avantage (2 dés, garder le meilleur)."""
+    """Lancer avec avantage (2 dés, garder le meilleur).
+
+    Implémentation concrète de la stratégie "avantage".
+    """
 
     def roll(self, roller: "DiceRoller", nb_faces: int) -> dict:
         rolls = [roller.roll_die(nb_faces), roller.roll_die(nb_faces)]
@@ -37,7 +49,10 @@ class AdvantageRollStrategy(RollStrategy):
 
 
 class DisadvantageRollStrategy(RollStrategy):
-    """Lancer avec désavantage (2 dés, garder le moins bon)."""
+    """Lancer avec désavantage (2 dés, garder le moins bon).
+
+    Implémentation concrète de la stratégie "desavantage".
+    """
 
     def roll(self, roller: "DiceRoller", nb_faces: int) -> dict:
         rolls = [roller.roll_die(nb_faces), roller.roll_die(nb_faces)]
@@ -54,6 +69,9 @@ class DiceRoller:  # classe pour gérer le lancer de dés
     DES_AUTORISES = [4, 6, 8, 10, 12, 20, 100]  # liste des dés autorisés
 
     def __init__(self) -> None:
+        # Dictionnaire de stratégies :
+        # la clé = nom choisi par l'appelant, la valeur = objet stratégie.
+        # Exemple : roll(20, "avantage") -> AdvantageRollStrategy.
         self._strategies = {
             "normal": NormalRollStrategy(),
             "avantage": AdvantageRollStrategy(),
@@ -67,10 +85,16 @@ class DiceRoller:  # classe pour gérer le lancer de dés
         return random.randint(1, nb_faces)
 
     def roll(self, nb_faces: int, strategy: str = "normal") -> dict:
-        """Applique une stratégie de lancer sur un type de dé."""
+        """Applique une stratégie de lancer sur un type de dé.
+
+        Point d'entrée Strategy :
+        - On choisit la stratégie via son nom.
+        - On délègue le calcul à l'objet stratégie correspondant.
+        """
         if strategy not in self._strategies:
             raise ValueError(f"Stratégie invalide : {strategy}")
 
+        # Délégation : la stratégie fait le travail, DiceRoller reste le contexte.
         return self._strategies[strategy].roll(self, nb_faces)
 
     def roll_d20(self, mode: str = "normal") -> dict:
@@ -81,6 +105,7 @@ class DiceRoller:  # classe pour gérer le lancer de dés
         if mode not in ("normal", "avantage", "desavantage"):
             raise ValueError("mode d20 invalide")
 
+        # On réutilise le pattern Strategy pour d20.
         info = self.roll(20, mode)
         return {"mode": mode, "rolls": info["rolls"], "selected": info["final_value"]}
 
