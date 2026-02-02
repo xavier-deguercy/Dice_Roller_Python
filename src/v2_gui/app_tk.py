@@ -19,7 +19,7 @@ import tkinter as tk
 from tkinter import ttk
 
 # Import "propre" (recommandé) : le core est sous src/core/
-from src.models.dice_roller import DiceRoller
+from src.core.dice_roller import DiceRoller
 
 
 class DiceRollerApp(tk.Tk):

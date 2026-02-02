@@ -1,0 +1,124 @@
+Stratégie en Python
+La Stratégie est un patron de conception comportemental qui transforme un ensemble de comportements en objets, et les rend interchangeables à l’intérieur de l’objet du contexte original.
+
+L’objet original, que l’on appelle contexte, garde une référence vers un objet stratégie et lui délègue l’exécution du comportement. Les autres objets doivent remplacer l’objet stratégie associé afin de modifier la manière dont le contexte fonctionne.
+
+Complexité : 
+
+Popularité : 
+
+Exemples d’utilisation : Le patron de conception stratégie est très répandu en Python. Il est souvent utilisé dans divers frameworks pour fournir aux utilisateurs la possibilité de modifier le comportement d’une classe sans l’étendre.
+
+Identification : La stratégie peut être reconnue par des méthodes qui laissent un objet imbriqué exécuter les tâches, ainsi que par le setter qui permet de remplacer cet objet par un autre.
+
+Exemple conceptuel
+Dans cet exemple, nous allons voir la structure de la Stratégie. Nous allons répondre aux questions suivantes :
+
+Que contiennent les classes ?
+Quels rôles jouent-elles ?
+Comment les éléments du patron sont-ils reliés ?
+ main.py: Exemple conceptuel
+from __future__ import annotations
+from abc import ABC, abstractmethod
+from typing import List
+
+
+class Context():
+    """
+    The Context defines the interface of interest to clients.
+    """
+
+    def __init__(self, strategy: Strategy) -> None:
+        """
+        Usually, the Context accepts a strategy through the constructor, but
+        also provides a setter to change it at runtime.
+        """
+
+        self._strategy = strategy
+
+    @property
+    def strategy(self) -> Strategy:
+        """
+        The Context maintains a reference to one of the Strategy objects. The
+        Context does not know the concrete class of a strategy. It should work
+        with all strategies via the Strategy interface.
+        """
+
+        return self._strategy
+
+    @strategy.setter
+    def strategy(self, strategy: Strategy) -> None:
+        """
+        Usually, the Context allows replacing a Strategy object at runtime.
+        """
+
+        self._strategy = strategy
+
+    def do_some_business_logic(self) -> None:
+        """
+        The Context delegates some work to the Strategy object instead of
+        implementing multiple versions of the algorithm on its own.
+        """
+
+        # ...
+
+        print("Context: Sorting data using the strategy (not sure how it'll do it)")
+        result = self._strategy.do_algorithm(["a", "b", "c", "d", "e"])
+        print(",".join(result))
+
+        # ...
+
+
+class Strategy(ABC):
+    """
+    The Strategy interface declares operations common to all supported versions
+    of some algorithm.
+
+    The Context uses this interface to call the algorithm defined by Concrete
+    Strategies.
+    """
+
+    @abstractmethod
+    def do_algorithm(self, data: List):
+        pass
+
+
+"""
+Concrete Strategies implement the algorithm while following the base Strategy
+interface. The interface makes them interchangeable in the Context.
+"""
+
+
+class ConcreteStrategyA(Strategy):
+    def do_algorithm(self, data: List) -> List:
+        return sorted(data)
+
+
+class ConcreteStrategyB(Strategy):
+    def do_algorithm(self, data: List) -> List:
+        return reversed(sorted(data))
+
+
+if __name__ == "__main__":
+    # The client code picks a concrete strategy and passes it to the context.
+    # The client should be aware of the differences between strategies in order
+    # to make the right choice.
+
+    context = Context(ConcreteStrategyA())
+    print("Client: Strategy is set to normal sorting.")
+    context.do_some_business_logic()
+    print()
+
+    print("Client: Strategy is set to reverse sorting.")
+    context.strategy = ConcreteStrategyB()
+    context.do_some_business_logic()
+ Output.txt: Résultat de l’exécution
+Client: Strategy is set to normal sorting.
+Context: Sorting data using the strategy (not sure how it'll do it)
+a,b,c,d,e
+
+Client: Strategy is set to reverse sorting.
+Context: Sorting data using the strategy (not sure how it'll do it)
+e,d,c,b,a
+Suivant
+Retour

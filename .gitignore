@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 .env
 .venv
-notesrobin.txt
-azerty.txt
-notesrobin.txt
+.notesrobin.txt
+.azerty.txt
+.notesrobin.txt
+.arborescence.txt
