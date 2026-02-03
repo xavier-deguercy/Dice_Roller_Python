@@ -99,7 +99,7 @@ class DiceRoller:  # classe pour gérer le lancer de dés
 
     def roll_d20(self, mode: str = "normal") -> dict:
         """
-        Retourne un dict pour que l'UI puisse afficher des détails.
+        Retourne un dict standardisé pour que l'UI puisse afficher des détails.
         mode: "normal" | "avantage" | "desavantage"
         """
         if mode not in ("normal", "avantage", "desavantage"):
