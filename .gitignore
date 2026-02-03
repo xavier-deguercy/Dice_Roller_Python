@@ -2,7 +2,10 @@ __pycache__/
 *.pyc
 .env
 .venv
-.notesrobin.txt
-.azerty.txt
-.notesrobin.txt
-.arborescence.txt
+notesrobin.txt
+azerty.txt
+notesrobin.txt
+arborescence.txt
+refacto_readme.md
+refacto_readme.txt
+README_old.md
