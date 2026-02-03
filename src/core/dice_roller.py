@@ -106,21 +106,15 @@ class DiceRoller:  # classe pour gérer le lancer de dés
             raise ValueError("mode d20 invalide")
 
         # On réutilise le pattern Strategy pour d20.
-        return self.roll(20, mode)
+        info = self.roll(20, mode)
+        return {"mode": mode, "rolls": info["rolls"], "selected": info["final_value"]}
 
     def roll_many(self, nb_faces: int, n: int) -> dict:
         if not isinstance(n, int) or n < 1:
             raise ValueError("n doit être un entier >= 1")
 
         rolls = [self.roll_die(nb_faces) for _ in range(n)]
-        total = sum(rolls)
-        return {
-            "strategy": "many",
-            "rolls": rolls,
-            "final_value": total,
-            "die_faces": nb_faces,
-            "count": n,
-        }
+        return {"nb_faces": nb_faces, "n": n, "rolls": rolls, "total": sum(rolls)}
 
 
 def main():  # fonction principale
