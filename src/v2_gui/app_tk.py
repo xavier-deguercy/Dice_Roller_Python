@@ -25,8 +25,6 @@ from src.core.dice_roller import DiceRoller
 class DiceRollerApp(tk.Tk):
     """Application Tkinter : UI séparée du moteur (DiceRoller)."""
 
-    DES_AUTORISES = [4, 6, 8, 10, 12, 20, 100]
-
     def __init__(self):
         super().__init__()
 
@@ -74,7 +72,8 @@ class DiceRollerApp(tk.Tk):
         self.combo_de = ttk.Combobox(
             line,
             textvariable=self.nb_faces_var,
-            values=[str(x) for x in self.DES_AUTORISES],
+            # Source de vérité : la liste des dés autorisés vient du core.
+            values=[str(x) for x in self.roller.DES_AUTORISES],
             state="readonly",
             width=8
         )
@@ -185,7 +184,7 @@ class DiceRollerApp(tk.Tk):
             self.result_var.set("Résultat : nombre de dés invalide")
             return
 
-        if nb_faces not in self.DES_AUTORISES:
+        if nb_faces not in self.roller.DES_AUTORISES:
             self.result_var.set(f"Résultat : dé non supporté (d{nb_faces})")
             return
         if n < 1:
@@ -215,11 +214,13 @@ class DiceRollerApp(tk.Tk):
         kept = None  # utile pour d20 avantage/désavantage
 
         # --- Cas d20 avantage/désavantage (spécifique) ---
+        # Ici, on délègue au core qui applique le pattern Strategy
+        # via DiceRoller.roll_d20 (d20 uniquement).
         if nb_faces == 20 and self.mode_d20_var.get() in ("avantage", "desavantage"):
             mode = self.mode_d20_var.get()
-            info = self.roller.roll_d20(mode)  # dict: rolls, selected, mode
+            info = self.roller.roll_d20(mode)  # dict standardisé du core
             rolls = info["rolls"]
-            kept = info["selected"]
+            kept = info["final_value"]
             base = kept
 
             # Forme lisible
