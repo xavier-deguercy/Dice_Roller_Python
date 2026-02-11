@@ -217,9 +217,9 @@ class DiceRollerApp(tk.Tk):
         # --- Cas d20 avantage/désavantage (spécifique) ---
         if nb_faces == 20 and self.mode_d20_var.get() in ("avantage", "desavantage"):
             mode = self.mode_d20_var.get()
-            info = self.roller.roll_d20(mode)  # dict: rolls, selected, mode
+            info = self.roller.roll_d20(mode)  # dict standardisé du core
             rolls = info["rolls"]
-            kept = info["selected"]
+            kept = info["final_value"]
             base = kept
 
             # Forme lisible

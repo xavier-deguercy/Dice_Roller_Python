@@ -204,7 +204,7 @@ class DiceRollerApp(tk.Tk):
         """
         Calcule le message final à afficher.
         - d20 + avantage/désavantage => utilise roller.roll_d20(mode)
-        - sinon => lance NdY via roll_die en boucle (compatible même si roll_many n'existe pas)
+        - sinon => lance NdY via roller.roll_many
         - inspiration => +1d4
         - critique => uniquement d20 (sur le résultat retenu avant bonus)
         """
@@ -228,9 +228,9 @@ class DiceRollerApp(tk.Tk):
 
         else:
             # --- Cas général : NdY (US-003) ---
-            # (Si tu ajoutes roll_many dans le core plus tard, on pourra remplacer ici.)
-            rolls = [self.roller.roll_die(nb_faces) for _ in range(n)]
-            base = sum(rolls)
+            info = self.roller.roll_many(nb_faces, n)
+            rolls = info["rolls"]
+            base = info["final_value"]
 
             if n == 1:
                 msg = f"d{nb_faces} → {rolls[0]}"

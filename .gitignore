@@ -2,9 +2,12 @@ __pycache__/
 *.pyc
 .env
 .venv
+.pytest_cache/
+pytest-cache-files-*/
+.pylint_cache/
+reports/
 notesrobin.txt
 azerty.txt
-notesrobin.txt
 arborescence.txt
 refacto_readme.md
 refacto_readme.txt
