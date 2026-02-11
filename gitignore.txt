@@ -1,17 +1,21 @@
+# Caches Python
 __pycache__/
 *.pyc
-.env
-.venv
 .pytest_cache/
 pytest-cache-files-*/
 .pylint_cache/
+
+# Environnement local
+.env
+.venv
+
+# Rapports generes
 reports/
+
+# Fichiers locaux projet
 notesrobin.txt
 azerty.txt
 arborescence.txt
 refacto_readme.md
 refacto_readme.txt
 README_old.md
-docker-compose.yml
-Dockerfile
-DOC
