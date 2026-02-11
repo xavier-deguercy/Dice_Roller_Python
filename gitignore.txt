@@ -1,4 +1,21 @@
-.azerty.txt
-.notesrobin.txt
-.README_dice-roller-python.txt
-.docs
+# Caches Python
+__pycache__/
+*.pyc
+.pytest_cache/
+pytest-cache-files-*/
+.pylint_cache/
+
+# Environnement local
+.env
+.venv
+
+# Rapports generes
+reports/
+
+# Fichiers locaux projet
+notesrobin.txt
+azerty.txt
+arborescence.txt
+refacto_readme.md
+refacto_readme.txt
+README_old.md
