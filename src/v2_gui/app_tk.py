@@ -1,258 +1,228 @@
-# src/v2_gui/app_tk.py
 """
-IHM Tkinter (orientée objet) — Dice Roller
+Interface Tkinter de Dice Roller.
 
-Fonctionnalités couvertes ici :
-- Choix du dé (d4, d6, d8, d10, d12, d20, d100)
-- US-003 : lancer plusieurs dés (NdY) via un Spinbox "Nombre"
-- d20 uniquement : avantage / désavantage (2d20 garder meilleur/pire)
-- Inspiration bardique : +1d4 (optionnel)
-- US-004 : critiques d20 (1 = échec critique, 20 = réussite critique)
-
-Important :
-- L'IHM ne contient PAS les règles : elle appelle la classe DiceRoller (core).
-- Pour que l'import marche proprement, lance en module :
-  python -m src.v2_gui.app_tk
+Cette couche:
+- lit les choix utilisateur,
+- appelle le core (`DiceRoller.resolve_roll`),
+- transforme le resultat en texte lisible.
 """
 
 import tkinter as tk
 from tkinter import ttk
 
-# Import "propre" (recommandé) : le core est sous src/core/
 from src.core.dice_roller import DiceRoller
 
 
 class DiceRollerApp(tk.Tk):
-    """Application Tkinter : UI séparée du moteur (DiceRoller)."""
+    """
+    Fenetre principale Tkinter.
+
+    Important:
+    - pas de regles de lancer ici,
+    - le core decide des resultats, l'UI ne fait que presenter.
+    """
 
     def __init__(self):
         super().__init__()
 
-        # --- Fenêtre ---
         self.title("Dice Roller")
         self.geometry("520x520")
         self.resizable(False, False)
 
-        # --- Moteur (logique métier) ---
         self.roller = DiceRoller()
 
-        # --- État UI (Tkinter Variables) ---
-        self.nb_faces_var = tk.StringVar(value="20")           # dé sélectionné (texte)
-        self.n_dice_var = tk.IntVar(value=1)                   # US-003 : nombre de dés
-        self.mode_d20_var = tk.StringVar(value="normal")       # normal / avantage / desavantage
-        self.inspiration_var = tk.BooleanVar(value=False)      # +1d4
-        self.result_var = tk.StringVar(value="Résultat : -")   # message affiché
+        # Etat UI: ces variables sont liees aux widgets Tkinter.
+        self.nb_faces_var = tk.StringVar(value="20")
+        self.n_dice_var = tk.IntVar(value=1)
+        self.mode_d20_var = tk.StringVar(value="normal")
+        self.inspiration_var = tk.BooleanVar(value=False)
+        self.result_var = tk.StringVar(value="Resultat : -")
 
-        # Widgets qu’on doit activer/désactiver
         self.spin_n = None
         self.d20_options = None
 
-        # Build UI
         self._build_ui()
         self._refresh_d20_visibility()
 
-    # ---------------------------------------------------------------------
-    # UI
-    # ---------------------------------------------------------------------
-
     def _build_ui(self):
-        """Construit tous les widgets (une seule fois)."""
+        """Construit l'interface une seule fois."""
         root = ttk.Frame(self, padding=16)
         root.pack(fill="both", expand=True)
 
-        ttk.Label(root, text="Dice Roller", font=("Segoe UI", 16, "bold")).pack(anchor="w")
-        ttk.Label(root, text="Choisis un dé, un nombre, puis clique “Lancer”.").pack(anchor="w", pady=(2, 14))
+        ttk.Label(
+            root,
+            text="Dice Roller",
+            font=("Segoe UI", 16, "bold"),
+        ).pack(
+            anchor="w"
+        )
+        ttk.Label(
+            root,
+            text="Choisis un de, un nombre, puis clique Lancer.",
+        ).pack(anchor="w", pady=(2, 14))
 
-        # ---- Ligne : choix du dé + nombre de dés ----
         line = ttk.Frame(root)
         line.pack(fill="x", pady=(0, 12))
 
-        ttk.Label(line, text="Type de dé :").pack(side="left")
+        ttk.Label(line, text="Type de de :").pack(side="left")
 
         self.combo_de = ttk.Combobox(
             line,
             textvariable=self.nb_faces_var,
-            # Source de vérité : la liste des dés autorisés vient du core.
             values=[str(x) for x in self.roller.DES_AUTORISES],
             state="readonly",
-            width=8
+            width=8,
         )
         self.combo_de.pack(side="left", padx=(10, 18))
         self.combo_de.set("20")
 
+        # Spinbox classique (robuste selon versions tkinter).
         ttk.Label(line, text="Nombre :").pack(side="left")
-
-        # tk.Spinbox = robuste selon versions Python
         self.spin_n = tk.Spinbox(
             line,
             from_=1,
             to=50,
             width=5,
-            textvariable=self.n_dice_var
+            textvariable=self.n_dice_var,
         )
         self.spin_n.pack(side="left", padx=(10, 0))
+        self.combo_de.bind(
+            "<<ComboboxSelected>>",
+            lambda _e: self._refresh_d20_visibility(),
+        )
 
-        # Mise à jour options quand le dé change
-        self.combo_de.bind("<<ComboboxSelected>>", lambda _e: self._refresh_d20_visibility())
-
-        # ---- Options ----
         options = ttk.LabelFrame(root, text="Options", padding=12)
         options.pack(fill="x", pady=(0, 12))
 
-        # Options d20 uniquement
-        self.d20_options = ttk.LabelFrame(options, text="D20 uniquement", padding=10)
+        self.d20_options = ttk.LabelFrame(
+            options,
+            text="D20 uniquement",
+            padding=10,
+        )
         self.d20_options.pack(fill="x", pady=(0, 10))
-        
-        # 
+
         ttk.Radiobutton(
             self.d20_options,
-            text="Normal (1d20) — autorise aussi Nd20",
+            text="Normal (1d20) - autorise aussi Nd20",
             value="normal",
             variable=self.mode_d20_var,
-            command=self._refresh_d20_visibility
+            command=self._refresh_d20_visibility,
         ).pack(anchor="w")
 
-        # 
         ttk.Radiobutton(
             self.d20_options,
             text="Avantage (2d20, garder le meilleur)",
             value="avantage",
             variable=self.mode_d20_var,
-            command=self._refresh_d20_visibility
+            command=self._refresh_d20_visibility,
         ).pack(anchor="w")
 
-        # 
         ttk.Radiobutton(
             self.d20_options,
-            text="Désavantage (2d20, garder le moins bon)",
+            text="Desavantage (2d20, garder le moins bon)",
             value="desavantage",
             variable=self.mode_d20_var,
-            command=self._refresh_d20_visibility
+            command=self._refresh_d20_visibility,
         ).pack(anchor="w")
 
-        # Inspiration bardique
         ttk.Checkbutton(
             options,
             text="Inspiration bardique (+1d4)",
-            variable=self.inspiration_var
+            variable=self.inspiration_var,
         ).pack(anchor="w")
 
-        # ---- Action ----
-        ttk.Button(root, text="Lancer", command=self.on_roll_click).pack(anchor="w", pady=(0, 12))
-
-        # ---- Résultat ----
-        ttk.Label(root, textvariable=self.result_var, font=("Segoe UI", 11)).pack(anchor="w")
+        ttk.Button(root, text="Lancer", command=self.on_roll_click).pack(
+            anchor="w",
+            pady=(0, 12),
+        )
+        ttk.Label(
+            root,
+            textvariable=self.result_var,
+            font=("Segoe UI", 11),
+        ).pack(
+            anchor="w"
+        )
 
     def _refresh_d20_visibility(self):
         """
-        Affiche/masque les options d20.
-        Gère aussi le cas : avantage/désavantage => N forcé à 1 (car 2d20 spécifique).
+        Affiche/masque les options d20 selon le de selectionne.
+
+        Regle UI:
+        - avantage/desavantage impose n=1,
+        - sinon le champ nombre reste editable.
         """
-        is_d20 = (self.nb_faces_var.get() == "20")
+        is_d20 = self.nb_faces_var.get() == "20"
 
         if is_d20:
-            # Affiche le bloc d20
             self.d20_options.pack(fill="x", pady=(0, 10))
         else:
-            # Cache le bloc d20 + remet le mode normal
             self.mode_d20_var.set("normal")
             self.d20_options.forget()
 
-        # Si avantage/désavantage : N doit être 1 (sinon ambigu : 2d20 ou Nd20 ?)
         if is_d20 and self.mode_d20_var.get() in ("avantage", "desavantage"):
             self.n_dice_var.set(1)
             self.spin_n.config(state="disabled")
         else:
             self.spin_n.config(state="normal")
 
-    # ---------------------------------------------------------------------
-    # Action principale
-    # ---------------------------------------------------------------------
-
     def on_roll_click(self):
-        """Déclenché au clic sur 'Lancer' : lit l’UI, appelle le core, affiche."""
-        # 1) Lecture / validation
+        """Point d'entree du bouton Lancer."""
+        # 1) Lecture/validation des entrees utilisateur.
         try:
             nb_faces = int(self.nb_faces_var.get())
         except ValueError:
-            self.result_var.set("Résultat : type de dé invalide")
+            self.result_var.set("Resultat : type de de invalide")
             return
 
         try:
             n = int(self.n_dice_var.get())
-        except Exception:
-            self.result_var.set("Résultat : nombre de dés invalide")
+        except (tk.TclError, ValueError):
+            self.result_var.set("Resultat : nombre de des invalide")
             return
 
-        if nb_faces not in self.roller.DES_AUTORISES:
-            self.result_var.set(f"Résultat : dé non supporté (d{nb_faces})")
-            return
-        if n < 1:
-            self.result_var.set("Résultat : le nombre de dés doit être >= 1")
-            return
-
-        # 2) Lancer principal (core)
+        # 2) Delegation au core + gestion d'erreurs utilisateur.
         try:
-            msg = self._compute_roll_message(nb_faces, n)
+            self.result_var.set(self._compute_roll_message(nb_faces, n))
+        except ValueError as exc:
+            self.result_var.set(f"Resultat : {exc}")
         except Exception:
-            self.result_var.set("Résultat : erreur au lancer")
-            return
-
-        self.result_var.set(msg)
+            self.result_var.set("Resultat : erreur au lancer")
 
     def _compute_roll_message(self, nb_faces: int, n: int) -> str:
-        """
-        Calcule le message final à afficher.
-        - d20 + avantage/désavantage => utilise roller.roll_d20(mode)
-        - sinon => lance NdY via roller.roll_many
-        - inspiration => +1d4
-        - critique => uniquement d20 (sur le résultat retenu avant bonus)
-        """
-        mode = "normal"
-        rolls = []
-        base = 0  # résultat principal (avant bonus)
-        kept = None  # utile pour d20 avantage/désavantage
+        """Transforme le resultat structure du core en message UI."""
+        details = self.roller.resolve_roll(
+            nb_faces=nb_faces,
+            n=n,
+            mode=self.mode_d20_var.get(),
+            inspiration=self.inspiration_var.get(),
+        )
 
-        # --- Cas d20 avantage/désavantage (spécifique) ---
-        # Ici, on délègue au core qui applique le pattern Strategy
-        # via DiceRoller.roll_d20 (d20 uniquement).
-        if nb_faces == 20 and self.mode_d20_var.get() in ("avantage", "desavantage"):
-            mode = self.mode_d20_var.get()
-            info = self.roller.roll_d20(mode)  # dict standardisé du core
-            rolls = info["rolls"]
-            kept = info["final_value"]
-            base = kept
-
-            # Forme lisible
-            msg = f"d20 {mode} → {rolls} (retenu {kept})"
-
+        # Corps principal du message.
+        if details["is_d20_special"]:
+            msg = (
+                f"d20 {details['mode']} -> {details['rolls']} "
+                f"(retenu {details['selected']})"
+            )
+        elif details["count"] == 1:
+            msg = f"d{details['die_faces']} -> {details['rolls'][0]}"
         else:
-            # --- Cas général : NdY (US-003) ---
-            info = self.roller.roll_many(nb_faces, n)
-            rolls = info["rolls"]
-            base = info["final_value"]
+            msg = (
+                f"{details['count']}d{details['die_faces']} -> "
+                f"{details['rolls']} (total {details['base_value']})"
+            )
 
-            if n == 1:
-                msg = f"d{nb_faces} → {rolls[0]}"
-                base = rolls[0]
-            else:
-                msg = f"{n}d{nb_faces} → {rolls} (total {base})"
+        # Prefixe critique si applicable.
+        if details["critical"] == "success":
+            msg = "Reussite critique ! " + msg
+        elif details["critical"] == "failure":
+            msg = "Echec critique ! " + msg
 
-        # --- Critiques d20 (US-004) ---
-        # Critique basé sur le résultat d20 retenu (avant bonus)
-        # - pour Nd20 en mode normal (n==1), base est le résultat du dé
-        # - pour avantage/désavantage, base = kept
-        if nb_faces == 20:
-            if base == 20:
-                msg = "🎉 Réussite critique ! " + msg
-            elif base == 1:
-                msg = "💀 Échec critique ! " + msg
-
-        # --- Inspiration bardique (+1d4) ---
-        if self.inspiration_var.get():
-            bonus = self.roller.roll_die(4)
-            total = base + bonus
-            msg += f" | Inspiration +{bonus} → Total {total}"
+        # Suffixe bonus si inspiration active.
+        if details["bonus"] > 0:
+            msg += (
+                f" | Inspiration +{details['bonus']} -> "
+                f"Total {details['final_value']}"
+            )
 
         return msg
 
