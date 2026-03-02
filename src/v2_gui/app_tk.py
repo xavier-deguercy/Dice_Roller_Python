@@ -10,7 +10,8 @@ Cette couche:
 import tkinter as tk
 from tkinter import ttk
 
-from src.core.dice_roller import DiceRoller
+from src.core.dice_roller import DiceRoller, RollRequest, RuleOptionRequest
+from src.core.formatting import format_roll_result
 
 
 class DiceRollerApp(tk.Tk):
@@ -22,11 +23,19 @@ class DiceRollerApp(tk.Tk):
     - le core decide des resultats, l'UI ne fait que presenter.
     """
 
+    ROLL_KIND_LABELS = {
+        "Jet generique": "generic_roll",
+        "Ability check": "ability_check",
+        "Jet d'attaque": "attack_roll",
+        "Jet de sauvegarde": "saving_throw",
+    }
+    BARDIC_DIE_CHOICES = ("Aucun", "d6", "d8", "d10", "d12")
+
     def __init__(self):
         super().__init__()
 
         self.title("Dice Roller")
-        self.geometry("520x520")
+        self.geometry("560x700")
         self.resizable(False, False)
 
         self.roller = DiceRoller()
@@ -35,14 +44,23 @@ class DiceRollerApp(tk.Tk):
         self.nb_faces_var = tk.StringVar(value="20")
         self.n_dice_var = tk.IntVar(value=1)
         self.mode_d20_var = tk.StringVar(value="normal")
-        self.inspiration_var = tk.BooleanVar(value=False)
+        self.roll_kind_label_var = tk.StringVar(value="Jet generique")
+        self.guidance_var = tk.BooleanVar(value=False)
+        self.bardic_die_var = tk.StringVar(value="Aucun")
+        self.heroic_inspiration_var = tk.BooleanVar(value=False)
         self.result_var = tk.StringVar(value="Resultat : -")
 
         self.spin_n = None
+        self.roll_kind_combo = None
         self.d20_options = None
+        self.guidance_checkbutton = None
+        self.bardic_combo = None
+        self.heroic_checkbutton = None
 
         self._build_ui()
+        self.n_dice_var.trace_add("write", self._on_dice_count_change)
         self._refresh_d20_visibility()
+        self._refresh_rule_options_state()
 
     def _build_ui(self):
         """Construit l'interface une seule fois."""
@@ -58,7 +76,7 @@ class DiceRollerApp(tk.Tk):
         )
         ttk.Label(
             root,
-            text="Choisis un de, un nombre, puis clique Lancer.",
+            text="Choisis un de, un nombre, puis construis le jet a lancer.",
         ).pack(anchor="w", pady=(2, 14))
 
         line = ttk.Frame(root)
@@ -91,7 +109,24 @@ class DiceRollerApp(tk.Tk):
             lambda _e: self._refresh_d20_visibility(),
         )
 
-        options = ttk.LabelFrame(root, text="Options", padding=12)
+        context = ttk.LabelFrame(root, text="Contexte de jet", padding=12)
+        context.pack(fill="x", pady=(0, 12))
+
+        ttk.Label(context, text="Type de jet :").pack(anchor="w")
+        self.roll_kind_combo = ttk.Combobox(
+            context,
+            textvariable=self.roll_kind_label_var,
+            values=list(self.ROLL_KIND_LABELS.keys()),
+            state="readonly",
+            width=24,
+        )
+        self.roll_kind_combo.pack(anchor="w", pady=(6, 0))
+        self.roll_kind_combo.bind(
+            "<<ComboboxSelected>>",
+            lambda _event: self._refresh_rule_options_state(),
+        )
+
+        options = ttk.LabelFrame(root, text="Modes de jet", padding=12)
         options.pack(fill="x", pady=(0, 12))
 
         self.d20_options = ttk.LabelFrame(
@@ -125,11 +160,39 @@ class DiceRollerApp(tk.Tk):
             command=self._refresh_d20_visibility,
         ).pack(anchor="w")
 
-        ttk.Checkbutton(
-            options,
-            text="Inspiration bardique (+1d4)",
-            variable=self.inspiration_var,
-        ).pack(anchor="w")
+        rules = ttk.LabelFrame(root, text="Options officielles", padding=12)
+        rules.pack(fill="x", pady=(0, 12))
+
+        ttk.Label(
+            rules,
+            text="Le core valide la compatibilite de ces options avec le type de jet.",
+        ).pack(anchor="w", pady=(0, 8))
+
+        self.guidance_checkbutton = ttk.Checkbutton(
+            rules,
+            text="Guidance (+1d4 sur ability check)",
+            variable=self.guidance_var,
+        )
+        self.guidance_checkbutton.pack(anchor="w")
+
+        bardic_line = ttk.Frame(rules)
+        bardic_line.pack(fill="x", pady=(8, 0))
+        ttk.Label(bardic_line, text="Bardic Inspiration :").pack(side="left")
+        self.bardic_combo = ttk.Combobox(
+            bardic_line,
+            textvariable=self.bardic_die_var,
+            values=self.BARDIC_DIE_CHOICES,
+            state="readonly",
+            width=8,
+        )
+        self.bardic_combo.pack(side="left", padx=(10, 0))
+
+        self.heroic_checkbutton = ttk.Checkbutton(
+            rules,
+            text="Heroic Inspiration (relance)",
+            variable=self.heroic_inspiration_var,
+        )
+        self.heroic_checkbutton.pack(anchor="w", pady=(8, 0))
 
         ttk.Button(root, text="Lancer", command=self.on_roll_click).pack(
             anchor="w",
@@ -139,6 +202,8 @@ class DiceRollerApp(tk.Tk):
             root,
             textvariable=self.result_var,
             font=("Segoe UI", 11),
+            wraplength=520,
+            justify="left",
         ).pack(
             anchor="w"
         )
@@ -165,6 +230,82 @@ class DiceRollerApp(tk.Tk):
         else:
             self.spin_n.config(state="normal")
 
+        self._refresh_rule_options_state()
+
+    def _on_dice_count_change(self, *_args):
+        """Rafraichit les options de regle quand le nombre de des change."""
+        self._refresh_rule_options_state()
+
+    def _refresh_rule_options_state(self):
+        """
+        Ajuste visuellement les options officielles selon le contexte courant.
+
+        Le core garde la validation metier definitive. L'UI se limite a
+        reduire les saisies incoherentes les plus evidentes.
+        """
+        if (
+            self.guidance_checkbutton is None
+            or self.bardic_combo is None
+            or self.heroic_checkbutton is None
+        ):
+            return
+
+        roll_kind = self.ROLL_KIND_LABELS.get(
+            self.roll_kind_label_var.get(),
+            "generic_roll",
+        )
+
+        guidance_allowed = roll_kind == "ability_check"
+        self.guidance_checkbutton.config(
+            state="normal" if guidance_allowed else "disabled"
+        )
+        if not guidance_allowed:
+            self.guidance_var.set(False)
+
+        bardic_allowed = roll_kind in ("ability_check", "attack_roll", "saving_throw")
+        self.bardic_combo.config(state="readonly" if bardic_allowed else "disabled")
+        if not bardic_allowed:
+            self.bardic_die_var.set("Aucun")
+
+        try:
+            heroic_allowed = self.mode_d20_var.get() == "normal" and int(
+                self.n_dice_var.get()
+            ) == 1
+        except (tk.TclError, ValueError):
+            heroic_allowed = False
+
+        self.heroic_checkbutton.config(
+            state="normal" if heroic_allowed else "disabled"
+        )
+        if not heroic_allowed:
+            self.heroic_inspiration_var.set(False)
+
+    def _selected_roll_kind(self) -> str:
+        """Traduit le libelle UI en valeur metier."""
+        label = self.roll_kind_label_var.get()
+        try:
+            return self.ROLL_KIND_LABELS[label]
+        except KeyError as exc:
+            raise ValueError("type de jet invalide") from exc
+
+    def _build_official_options(self) -> tuple[RuleOptionRequest, ...]:
+        """Construit les options officielles choisies dans l'UI."""
+        options: list[RuleOptionRequest] = []
+
+        if self.guidance_var.get():
+            options.append(RuleOptionRequest(name="guidance"))
+
+        if self.bardic_die_var.get() != "Aucun":
+            die_faces = int(self.bardic_die_var.get()[1:])
+            options.append(
+                RuleOptionRequest(name="bardic_inspiration", die_faces=die_faces)
+            )
+
+        if self.heroic_inspiration_var.get():
+            options.append(RuleOptionRequest(name="heroic_inspiration"))
+
+        return tuple(options)
+
     def on_roll_click(self):
         """Point d'entree du bouton Lancer."""
         # 1) Lecture/validation des entrees utilisateur.
@@ -190,41 +331,15 @@ class DiceRollerApp(tk.Tk):
 
     def _compute_roll_message(self, nb_faces: int, n: int) -> str:
         """Transforme le resultat structure du core en message UI."""
-        details = self.roller.resolve_roll(
-            nb_faces=nb_faces,
-            n=n,
-            mode=self.mode_d20_var.get(),
-            inspiration=self.inspiration_var.get(),
+        request = RollRequest(
+            die_faces=nb_faces,
+            count=n,
+            roll_mode=self.mode_d20_var.get(),
+            roll_kind=self._selected_roll_kind(),
+            official_options=self._build_official_options(),
         )
-
-        # Corps principal du message.
-        if details["is_d20_special"]:
-            msg = (
-                f"d20 {details['mode']} -> {details['rolls']} "
-                f"(retenu {details['selected']})"
-            )
-        elif details["count"] == 1:
-            msg = f"d{details['die_faces']} -> {details['rolls'][0]}"
-        else:
-            msg = (
-                f"{details['count']}d{details['die_faces']} -> "
-                f"{details['rolls']} (total {details['base_value']})"
-            )
-
-        # Prefixe critique si applicable.
-        if details["critical"] == "success":
-            msg = "Reussite critique ! " + msg
-        elif details["critical"] == "failure":
-            msg = "Echec critique ! " + msg
-
-        # Suffixe bonus si inspiration active.
-        if details["bonus"] > 0:
-            msg += (
-                f" | Inspiration +{details['bonus']} -> "
-                f"Total {details['final_value']}"
-            )
-
-        return msg
+        result = self.roller.resolve_roll(request)
+        return format_roll_result(result)
 
 
 if __name__ == "__main__":

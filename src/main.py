@@ -8,11 +8,10 @@ Option:
 - `--cli` execute un lancer unique en mode console.
 """
 
-import argparse # https://docs.python.org/3/library/argparse.html
+import argparse
 from typing import Sequence
 
 from src.v1_console.cli import main as cli_main
-from src.v2_gui.app_tk import DiceRollerApp
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -45,6 +44,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if remaining:
         parser.error("Les arguments CLI necessitent l'option --cli.")
+
+    from src.v2_gui.app_tk import DiceRollerApp
 
     app = DiceRollerApp()
     app.mainloop()
